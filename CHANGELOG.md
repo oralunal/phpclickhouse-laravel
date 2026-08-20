@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2026-08-20
 
 ### Fixed
 
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Corrected the derived table name (`MyTable` resolves to `my_tables`, not `my_table`), the events section (only `create()` fires `creating`/`created`; `save()` fires just `saved`), the `InsertArray` example (`insertAssoc()` takes `column => value` rows), and the `$tableSources` comment (`UPDATE` and `TRUNCATE` target it as well).
 - Added the missing `PhpClickHouseSchemaBuilder` imports to the Schema Builder migration example, which fataled when copied as written.
-- Documented the `cluster_name` connection key, which `Migration::createMergeTree()` reads to emit `ON CLUSTER` and which appeared in no documentation.
+- Documented the `cluster_name` connection key, which `Migration::createMergeTree()` reads to emit `ON CLUSTER` and which appeared in no documentation — including the fact that it requires `->ifNotExists()`, since migrations are dispatched to each node in turn and `ON CLUSTER` already creates the table everywhere on the first dispatch.
 
 ## [1.3.0] - 2026-08-20
 
@@ -71,7 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forked from [glushkovds/phpclickhouse-laravel](https://github.com/glushkovds/phpclickhouse-laravel) at 2.5.2.
 - Minimum PHP 8.5, Laravel 13+ only.
 
-[Unreleased]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.0.0...v1.1.0
