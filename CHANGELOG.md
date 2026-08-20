@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- A published `config/clickhouse.php` is now actually read. The service provider only ever loaded its own bundled copy, so `php artisan vendor:publish --tag=clickhouse-config` followed by editing the file silently did nothing — including the documented way to declare a second ClickHouse connection. Precedence is now `config/database.php` > published `config/clickhouse.php` > packaged defaults.
+- `insertBulk()` no longer drops the cast for the first column. `array_search()` returns index `0` for it, which the truthiness check treated as "not found", so a `boolean` cast on the first column was skipped and the raw PHP value reached ClickHouse (typically failing with `Cannot parse string 'false' as UInt8`).
+- `flushBuffer()` no longer throws `Fields not match` when rows were buffered one at a time carrying the same keys in different orders. Buffered rows are reordered to the first row's key order at flush time. A row whose key *set* differs is left untouched, so a genuinely mismatched buffer still fails loudly instead of shipping fabricated column values.
+
+### Upgrade note
+
+- If you published `config/clickhouse.php` before this release and edited it, those edits had no effect and may have been worked around elsewhere (for example in `.env` or `config/database.php`). They now take effect, ranking above the packaged defaults and below `config/database.php`. Review the published file before deploying.
+
+### Documentation
+
+- Corrected the derived table name (`MyTable` resolves to `my_tables`, not `my_table`), the events section (only `create()` fires `creating`/`created`; `save()` fires just `saved`), the `InsertArray` example (`insertAssoc()` takes `column => value` rows), and the `$tableSources` comment (`UPDATE` and `TRUNCATE` target it as well).
+- Added the missing `PhpClickHouseSchemaBuilder` imports to the Schema Builder migration example, which fataled when copied as written.
+- Documented the `cluster_name` connection key, which `Migration::createMergeTree()` reads to emit `ON CLUSTER` and which appeared in no documentation.
+
 ## [1.3.0] - 2026-08-20
 
 ### Changed

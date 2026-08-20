@@ -14,12 +14,32 @@ class ClickhouseServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $defaults = require __DIR__ . '/../config/clickhouse.php';
         $config = $this->app['config'];
 
-        foreach ($defaults as $name => $connectionDefaults) {
+        // A published config/clickhouse.php lands in config('clickhouse'). Its
+        // entries win over the packaged defaults and may add new connections.
+        // Reading the packaged file directly (rather than mergeConfigFrom) keeps
+        // the defaults intact when the app has cached its config without ever
+        // publishing ours.
+        $packaged = require __DIR__ . '/../config/clickhouse.php';
+        $published = $config->get('clickhouse');
+
+        $connections = $packaged;
+        foreach (is_array($published) ? $published : [] as $name => $entry) {
+            // Key-level merge, so a published entry only has to name what it
+            // changes — same granularity as the config/database.php layer below.
+            $connections[$name] = is_array($entry) && is_array($packaged[$name] ?? null)
+                ? array_merge($packaged[$name], $entry)
+                : $entry;
+        }
+        $config->set('clickhouse', $connections);
+
+        foreach ($connections as $name => $connectionDefaults) {
+            if (!is_array($connectionDefaults)) {
+                continue;
+            }
             $existing = $config->get("database.connections.{$name}", []);
-            // User-supplied values win over our defaults; shallow merge
+            // config/database.php still wins over everything; shallow merge
             // mirrors mergeConfigFrom semantics.
             $config->set(
                 "database.connections.{$name}",

@@ -72,8 +72,10 @@ the config:
 php artisan vendor:publish --tag=clickhouse-config
 ```
 
-That drops a `config/clickhouse.php` into your app. Alternatively, you can
-define the connection yourself in `config/database.php`:
+That drops a `config/clickhouse.php` into your app. Values you set there
+override the packaged defaults, and you can add further connections to the
+same file. Alternatively, you can define the connection yourself in
+`config/database.php`, which outranks both:
 
 ```php
 'clickhouse' => [
@@ -119,7 +121,7 @@ use PhpClickHouseLaravel\BaseModel;
 
 class MyTable extends BaseModel
 {
-    // Optional. Derived from class name MyTable => my_table when omitted.
+    // Optional. Derived from class name when omitted: MyTable => my_tables.
     protected $table = 'my_table';
 }
 ```
@@ -156,6 +158,9 @@ Or use the Schema Builder:
 
 ```php
 <?php
+
+use PhpClickHouseSchemaBuilder\Expression;
+use PhpClickHouseSchemaBuilder\Tables\MergeTree;
 
 class CreateMyTable extends \PhpClickHouseLaravel\Migration
 {
@@ -224,6 +229,9 @@ $rows = MyTable::select(['field_one', new RawColumn('sum(field_two)', 'field_two
 Before insertion, the column is converted to the data type specified in
 `$casts`. This only applies to inserts, not selects. Supported: `boolean`.
 
+Casts apply to `insertAssoc()` / `buffer()` by column name, and to
+`insertBulk()` by matching `$casts` keys against the `$columns` list you pass.
+
 ```php
 namespace App\Models\Clickhouse;
 
@@ -246,8 +254,18 @@ MyTable::insertAssoc([
 
 ### Events
 
-Events work like [Eloquent model events](https://laravel.com/docs/eloquent#events).
-Available: **creating**, **created**, **saved**.
+Events are dispatched under the same names as
+[Eloquent model events](https://laravel.com/docs/eloquent#events), but only a
+subset is fired, and which ones depends on how you insert:
+
+| Call | Events fired |
+| --- | --- |
+| `MyTable::create([...])` | `creating`, `saved`, `created` |
+| `MyTable::make([...])->save()` | `saved` |
+
+Returning `false` from a `creating` listener cancels `create()`. `save()` does
+not fire `creating`, so it cannot be cancelled that way. Observers and the
+`$dispatchesEvents` map are Eloquent-only and are not supported.
 
 ### Retries
 
@@ -406,7 +424,7 @@ class MyTable extends BaseModel
 {
     // SELECT and INSERT on $table
     protected $table = 'my_table_buffer';
-    // OPTIMIZE and DELETE on $tableSources
+    // OPTIMIZE, TRUNCATE, and where()->update() / where()->delete() on $tableSources
     protected $tableSources = 'my_table';
 }
 ```
@@ -426,7 +444,16 @@ MyTable::where('field_one', 123)
 
 ```php
 // Array data type
-MyTable::insertAssoc([[1, 'str', new InsertArray(['a','b'])]]);
+MyTable::insertAssoc([
+    ['id' => 1, 'field_one' => 'str', 'field_array' => new InsertArray(['a', 'b'])],
+]);
+```
+
+`insertAssoc()` takes `column => value` rows. For positional rows, use
+`insertBulk()` with an explicit column list:
+
+```php
+MyTable::insertBulk([[1, 'str', new InsertArray(['a', 'b'])]], ['id', 'field_one', 'field_array']);
 ```
 
 ### Working with multiple ClickHouse instances in a project
@@ -466,8 +493,9 @@ return [
 ];
 ```
 
-(Adding the same shape to `config/database.php`'s `connections` array
-still works — user-supplied values always win over the package defaults.)
+Precedence, highest first: `config/database.php`'s `connections` array, then
+your published `config/clickhouse.php`, then the packaged defaults. So adding
+the same shape to `config/database.php` works too, and overrides both.
 
 **2.** Add a model pointing at it:
 
@@ -541,6 +569,13 @@ Your `config/database.php` should look like:
             'port' => '8123',
         ],
     ],
+    // Optional. When set, Migration::createMergeTree() adds
+    // ON CLUSTER '<name>' to the DDL it compiles. It must match a cluster
+    // declared in your ClickHouse server config (remote_servers).
+    // Without it the table is still created on every node, because
+    // migrations are dispatched to each node in turn.
+    // If you set it, also call ->ifNotExists() in createMergeTree() — see below.
+    'cluster_name' => 'company_cluster',
     'database' => env('CLICKHOUSE_DATABASE', 'default'),
     'username' => env('CLICKHOUSE_USERNAME', 'default'),
     'password' => env('CLICKHOUSE_PASSWORD', ''),
@@ -554,6 +589,21 @@ Your `config/database.php` should look like:
     'fix_default_query_builder' => true,
 ],
 ```
+
+With `cluster_name` set, add `->ifNotExists()` to `createMergeTree()`:
+
+```php
+static::createMergeTree('my_table', fn(MergeTree $table) => $table
+    ->ifNotExists()
+    ->columns([...])
+    ->orderBy('id')
+);
+```
+
+Migrations are dispatched to each node in turn, and `ON CLUSTER` already
+creates the table on every node from the first dispatch — so without
+`IF NOT EXISTS` the second node's identical statement fails with
+`TABLE_ALREADY_EXISTS`.
 
 Migration:
 

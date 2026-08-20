@@ -200,7 +200,8 @@ class BaseModel
         if ($castsAssoc = $instance->casts) {
             $casts = [];
             foreach ($castsAssoc as $castColumn => $castType) {
-                if ($index = array_search($castColumn, $columns)) {
+                $index = array_search($castColumn, $columns);
+                if ($index !== false) {
                     $casts[$index] = $castType;
                 }
             }
@@ -261,6 +262,25 @@ class BaseModel
      */
     protected static function prepareAssocRowsForInsert(array $rows): array
     {
+        $rows = static::normalizeAssocRowKeyOrder($rows);
+        if ($casts = (new static())->casts) {
+            foreach ($rows as &$row) {
+                $row = static::castRow($row, $casts);
+            }
+            unset($row);
+        }
+        return $rows;
+    }
+
+    /**
+     * Align every row to the key order of the first row, filling any key the row
+     * lacks with its positional index. Long-standing insertAssoc() behavior.
+     *
+     * @param array[] $rows
+     * @return array[]
+     */
+    protected static function normalizeAssocRowKeyOrder(array $rows): array
+    {
         $rows = array_values($rows);
         if (isset($rows[0]) && isset($rows[1])) {
             $keys = array_keys($rows[0]);
@@ -269,12 +289,33 @@ class BaseModel
             }
             unset($row);
         }
-        if ($casts = (new static())->casts) {
-            foreach ($rows as &$row) {
-                $row = static::castRow($row, $casts);
-            }
-            unset($row);
+        return $rows;
+    }
+
+    /**
+     * Reorder rows to the first row's key order WITHOUT inventing values. Rows
+     * buffered one at a time are each prepared in isolation, so their key order
+     * is only comparable once they sit in one array. A row whose key set differs
+     * is left untouched, so a genuinely mismatched buffer still fails loudly at
+     * insert time instead of shipping fabricated column values.
+     *
+     * @param array[] $rows
+     * @return array[]
+     */
+    protected static function reorderAssocRowKeys(array $rows): array
+    {
+        $rows = array_values($rows);
+        if (!isset($rows[0]) || !isset($rows[1])) {
+            return $rows;
         }
+        $reference = array_flip(array_keys($rows[0]));
+        foreach ($rows as &$row) {
+            if (count($row) === count($reference) && !array_diff_key($reference, $row)) {
+                $row = array_replace($reference, $row);
+            }
+        }
+        unset($row);
+
         return $rows;
     }
 

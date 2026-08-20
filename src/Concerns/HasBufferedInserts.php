@@ -56,6 +56,11 @@ trait HasBufferedInserts
             return null;
         }
 
+        // Rows buffered one at a time were each prepared in isolation, so their
+        // key order is only comparable now that they sit in one array. Reorder
+        // only: a row with a different key set must still fail loudly.
+        $rows = static::reorderAssocRowKeys($rows);
+
         $instance = new static();
         $statement = $instance->getThisClient()->insertAssocBulk(
             $instance->getTableForInserts(),

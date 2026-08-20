@@ -13,7 +13,12 @@
 |   php artisan vendor:publish --tag=clickhouse-config
 |
 | Add as many connections as you need. For a cluster, replace the `host`
-| and `port` pair with a `cluster` array of nodes (see README).
+| and `port` pair with a `cluster` array of nodes, and optionally set
+| `cluster_name` so migrations created with Migration::createMergeTree()
+| emit ON CLUSTER '<name>' (see README).
+|
+| Anything you set here overrides the packaged defaults. Entries in your
+| config/database.php `connections` array outrank both.
 |
 */
 
