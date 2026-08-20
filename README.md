@@ -606,3 +606,6 @@ ClickHouse in Docker. To run the test suite locally:
 See [docs/howto_run_local_test.md](docs/howto_run_local_test.md) for
 prerequisites, cluster-test notes, and using `vendor/bin/testbench` /
 Laravel Boost during development.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch and commit conventions, the
+`CHANGELOG.md` policy, and the release process.
