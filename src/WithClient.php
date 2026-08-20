@@ -9,7 +9,7 @@ trait WithClient
 {
     public function getThisClient(): Client
     {
-        return DB::connection($this->connection)->getClient();
+        return $this->resolveConnection()->getClient();
     }
 
     /**
@@ -18,7 +18,7 @@ trait WithClient
      */
     public static function getClient(): Client
     {
-        return DB::connection((new static())->connection)->getClient();
+        return (new static())->getThisClient();
     }
 
     public function resolveConnection(): Connection

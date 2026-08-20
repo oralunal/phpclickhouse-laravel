@@ -40,11 +40,11 @@ class Migration extends BaseMigration
     protected static function createMergeTree(string $tableName, callable $callback): Statement
     {
         $instance = new static();
-        $config = config("database.connections.$instance->connection");
+        $connection = $instance->resolveConnection();
         $table = (new MergeTree($tableName))
-            ->dbName($config['database'])
-            ->onCluster($config['cluster_name'] ?? null);
-        if ($config['cluster'] ?? null) {
+            ->dbName($connection->getDatabaseName())
+            ->onCluster($connection->getConfig('cluster_name'));
+        if ($connection->getConfig('cluster')) {
             $table->getEngine()->replicated();
         }
         $callback($table);
