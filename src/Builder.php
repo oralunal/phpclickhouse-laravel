@@ -117,12 +117,22 @@ class Builder extends BaseBuilder
     }
 
     /**
+     * Resolve the table targeted by data-modifying queries (ALTER TABLE, INSERT).
+     *
+     * @return string
+     */
+    protected function getTableForWrites(): string
+    {
+        return $this->tableSources ?? (string)$this->getFrom()->getTable();
+    }
+
+    /**
      * Note! This is a heavy operation not designed for frequent use.
      * @return Statement
      */
     public function delete(): Statement
     {
-        $table = $this->tableSources ?? $this->getFrom()->getTable();
+        $table = $this->getTableForWrites();
         $sql = "ALTER TABLE $table DELETE " . $this->grammar->compileWheresComponent($this, $this->getWheres());
         return $this->client->write($sql);
     }
@@ -136,7 +146,7 @@ class Builder extends BaseBuilder
         if (empty($values)) {
             throw QueryException::cannotUpdateEmptyValues();
         }
-        $table = $this->tableSources ?? $this->getFrom()->getTable();
+        $table = $this->getTableForWrites();
         $set = [];
         foreach ($values as $key => $value) {
             $set[] = "`$key` = " . $this->grammar->wrap($value);

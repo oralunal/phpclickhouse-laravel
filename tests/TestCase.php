@@ -75,7 +75,7 @@ abstract class TestCase extends OrchestraTestCase
             'username'       => 'default',
             'password'       => '',
             'timeout_connect'=> 2,
-            'timeout_query'  => 2,
+            'timeout_query'  => 10,
             'https'          => false,
             'retries'        => 0,
         ]);

@@ -246,7 +246,6 @@ trait BuilderMethodsFromLaravel
 
     public function insert(array $values)
     {
-        $table = $this->tableSources ?? (string)$this->getFrom()->getTable();
-        $this->client->insertAssocBulk($table, $values);
+        $this->client->insertAssocBulk($this->getTableForWrites(), $values);
     }
 }

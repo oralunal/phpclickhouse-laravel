@@ -197,7 +197,7 @@ class BaseModel
     public static function insertBulk(array $rows, array $columns = []): Statement
     {
         $instance = new static();
-        if ($castsAssoc = (new static())->casts) {
+        if ($castsAssoc = $instance->casts) {
             $casts = [];
             foreach ($castsAssoc as $castColumn => $castType) {
                 if ($index = array_search($castColumn, $columns)) {
@@ -340,6 +340,21 @@ class BaseModel
     }
 
     /**
+     * Begin a query on this model's table with the sources table attached for
+     * mutation queries. Shared scaffolding for where() and whereRaw();
+     * select() deliberately does not attach the sources table.
+     *
+     * @return Builder
+     */
+    protected static function newSourcedQuery(): Builder
+    {
+        $instance = new static();
+        return $instance->newQuery()->select(['*'])
+            ->from($instance->getTable())
+            ->setSourcesTable($instance->getTableSources());
+    }
+
+    /**
      * Necessary stub for HasAttributes trait
      * @return array
      */
@@ -430,10 +445,7 @@ class BaseModel
         $value = null,
         string $concatOperator = Operator::AND
     ): Builder {
-        $instance = new static();
-        $builder = $instance->newQuery()->select(['*'])
-            ->from($instance->getTable())
-            ->setSourcesTable($instance->getTableSources());
+        $builder = static::newSourcedQuery();
         if (is_null($value)) {
             // Fix func_num_args() in where clause in BaseBuilder
             $builder->where($column, $operator);
@@ -450,11 +462,7 @@ class BaseModel
      */
     public static function whereRaw(string $expression): Builder
     {
-        $instance = new static();
-        return $instance->newQuery()->select(['*'])
-            ->from($instance->getTable())
-            ->setSourcesTable($instance->getTableSources())
-            ->whereRaw($expression);
+        return static::newSourcedQuery()->whereRaw($expression);
     }
 
 

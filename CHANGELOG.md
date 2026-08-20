@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Consolidated duplicated internal scaffolding into shared helpers; public API and generated SQL are unchanged:
+  - `Builder`: `delete()`, `update()`, and `insert()` resolve their target table through one protected `getTableForWrites()` helper (previously three copies, one with a divergent string cast).
+  - `BaseModel`: `where()` and `whereRaw()` build their entry query through a shared protected static `newSourcedQuery()` helper; `select()` deliberately keeps its previous behavior (no sources table attached).
+  - `Migration::createMergeTree()` reads the database name and cluster settings from the resolved `Connection` instead of re-fetching them from the global `config()` repository.
+  - `WithClient::getThisClient()` now routes through `resolveConnection()`, and the deprecated static `getClient()` delegates to `getThisClient()`. For subclasses that override `resolveConnection()` or `getThisClient()`, the override now consistently applies to every client acquisition; previously some internal paths bypassed it.
+
 ## [1.2.0] - 2026-05-07
 
 ### Added
@@ -43,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Forked from [glushkovds/phpclickhouse-laravel](https://github.com/glushkovds/phpclickhouse-laravel) at 2.5.2.
 - Minimum PHP 8.5, Laravel 13+ only.
 
+[Unreleased]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/oralunal/phpclickhouse-laravel/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/oralunal/phpclickhouse-laravel/releases/tag/v1.0.0
